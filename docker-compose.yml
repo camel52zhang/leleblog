@@ -1,0 +1,29 @@
+services:
+  leleblog-api:
+    image: camel52zhang/leleblog-api:latest
+    container_name: leleblog-api
+    ports:
+      - "7070:7070"
+    volumes:
+      - ./data:/data       # 持久化挂载目录，冒号: 前可自定义
+    environment:
+      - GIN_MODE=release
+      - DB_PATH=/data/leleblog.db
+    restart: always
+    networks:
+      - leleblog-net
+
+  leleblog-web:
+    image: camel52zhang/leleblog-web:latest
+    container_name: leleblog-web
+    ports:
+      - "4000:4000"
+    depends_on:
+      - leleblog-api
+    restart: always
+    networks:
+      - leleblog-net
+
+networks:
+  leleblog-net:
+    driver: bridge
