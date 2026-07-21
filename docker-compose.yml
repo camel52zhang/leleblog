@@ -1,0 +1,62 @@
+# leleblog/docker-compose.yml
+# version: '3.8'
+
+services:
+  # 后端服务
+  leleblog-api:
+    image: camel52zhang/leleblog-api:latest
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: leleblog-api
+    ports:
+      - "7070:7070"
+    volumes:
+      - ./data:/data
+    environment:
+      - GIN_MODE=release
+      - DB_PATH=/data/leleblog.db
+      - UPLOAD_DIR=/data/uploads
+      - ALLOWED_ORIGINS=http://leleblog-web:4000,http://localhost:4000
+      # JWT 密钥从宿主 .env 注入；缺失时后端会拒绝启动（安全要求）
+      - JWT_SECRET=${JWT_SECRET}
+      # 管理员初始密码：从宿主 .env 注入；缺失时后端生成随机密码并要求首次改密
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      # 邮件服务（SMTP）配置：从宿主 .env 注入；留空则验证码仅打印到后端日志
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_USE_SSL=${SMTP_USE_SSL}
+      - PORT=7070
+      - INSERT_INITIAL_DATA=true
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7070/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - leleblog-net
+
+
+  # 前端服务
+  leleblog-web:
+    image: camel52zhang/leleblog-web:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: leleblog-web
+    ports:
+      - "4000:4000"
+    depends_on:
+      - leleblog-api
+    restart: always
+    networks:
+      - leleblog-net
+
+networks:
+  leleblog-net:
+    driver: bridge

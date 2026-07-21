@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Build (CGO required for SQLite)
+        run: CGO_ENABLED=1 go build -o server .
+      - name: Test
+        env:
+          JWT_SECRET: ci_test_secret_placeholder
+        run: CGO_ENABLED=1 go test -v ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+  # Docker 端到端冒烟测试：复刻本地「docker compose 验收」流程，
+  # 确保多文件 CGO 构建、容器健康检查、API/前端代理在 CI 中真实跑通。
+  docker-smoke:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 生成运行用 .env
+        run: |
+          JWT=$(openssl rand -hex 32)
+          cat > .env <<EOF
+          JWT_SECRET=$JWT
+          ADMIN_PASSWORD=CiTest@123456
+          ALLOWED_ORIGINS=http://localhost:4000
+          NEXT_PUBLIC_API_URL=http://leleblog-api:7070
+          EOF
+
+      - name: 构建并启动整栈
+        run: docker compose up -d --build
+
+      - name: 等待后端健康检查
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:7070/api/health >/dev/null 2>&1; then
+              echo "backend healthy after ${i} tries"
+              break
+            fi
+            echo "waiting for backend... ($i)"
+            sleep 3
+          done
+          curl -fsS http://localhost:7070/api/health || (echo "backend health failed"; docker compose logs; exit 1)
+
+      - name: 端到端冒烟验证
+        run: |
+          echo "=== /api/health ==="; curl -fsS http://localhost:7070/api/health; echo
+          echo "=== 前端 :4000/api 代理 ==="; curl -fsS http://localhost:4000/api/health; echo
+          echo "=== 公开文章列表 ==="; curl -fsS "http://localhost:7070/api/posts?page=1&pageSize=2" | head -c 200; echo
+          echo "=== 管理端无 token 应 401 ==="
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:7070/api/admin/comments?page=1&pageSize=2")
+          if [ "$CODE" != "401" ]; then echo "期望 401，实际 $CODE"; docker compose logs; exit 1; fi
+          echo "admin 401 OK"
+
+      - name: 拆除
+        if: always()
+        run: docker compose down -v
