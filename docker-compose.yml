@@ -51,9 +51,19 @@ services:
     container_name: leleblog-web
     ports:
       - "4000:4000"
+    environment:
+      # 容器内 API 代理目标：compose 网络内用服务名解析（运行时 next.config.ts 读取此值）
+      - NEXT_PUBLIC_API_URL=http://leleblog-api:7070
     depends_on:
-      - leleblog-api
+      leleblog-api:
+        condition: service_healthy
     restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - leleblog-net
 
