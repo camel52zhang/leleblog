@@ -55,6 +55,6 @@ http://yourip:4000/admin
 
 http://yourdomain.com:4000/admin
 
-## 默认用户名/密码：admin/admin
+## 默认用户名/密码：admin/admin123
 
 > ***登录后请立即修改密码，修改后的密码注意保存***
