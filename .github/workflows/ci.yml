@@ -50,12 +50,8 @@ jobs:
       - name: 生成运行用 .env
         run: |
           JWT=$(openssl rand -hex 32)
-          cat > .env <<EOF
-          JWT_SECRET=$JWT
-          ADMIN_PASSWORD=CiTest@123456
-          ALLOWED_ORIGINS=http://localhost:4000
-          NEXT_PUBLIC_API_URL=http://leleblog-api:7070
-          EOF
+          printf 'JWT_SECRET=%s\nADMIN_PASSWORD=CiTest@123456\nALLOWED_ORIGINS=http://localhost:4000\nNEXT_PUBLIC_API_URL=http://leleblog-api:7070\n' "$JWT" > .env
+          echo ".env generated (JWT_SECRET length: ${#JWT})"
 
       - name: 构建并启动整栈
         run: docker compose up -d --build
