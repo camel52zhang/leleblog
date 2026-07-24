@@ -53,8 +53,8 @@ jobs:
           printf 'JWT_SECRET=%s\nADMIN_PASSWORD=CiTest@123456\nALLOWED_ORIGINS=http://localhost:4000\nNEXT_PUBLIC_API_URL=http://leleblog-api:7070\n' "$JWT" > .env
           echo ".env generated (JWT_SECRET length: ${#JWT})"
 
-      - name: 构建并启动整栈
-        run: docker compose up -d --build
+      - name: 构建并启动整栈（本地源码构建，不依赖 Docker Hub）
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
 
       - name: 等待后端健康检查
         run: |
@@ -66,7 +66,7 @@ jobs:
             echo "waiting for backend... ($i)"
             sleep 3
           done
-          curl -fsS http://localhost:7070/api/health || (echo "backend health failed"; docker compose logs; exit 1)
+          curl -fsS http://localhost:7070/api/health || (echo "backend health failed"; docker compose -f docker-compose.yml -f docker-compose.ci.yml logs; exit 1)
 
       - name: 等待前端服务就绪
         run: |
@@ -78,7 +78,7 @@ jobs:
             echo "waiting for web... ($i)"
             sleep 3
           done
-          curl -fsS http://localhost:4000/api/health || (echo "web not ready"; docker compose logs leleblog-web; exit 1)
+          curl -fsS http://localhost:4000/api/health || (echo "web not ready"; docker compose -f docker-compose.yml -f docker-compose.ci.yml logs leleblog-web; exit 1)
 
       - name: 端到端冒烟验证
         run: |
@@ -87,9 +87,9 @@ jobs:
           echo "=== 公开文章列表 ==="; curl -fsS "http://localhost:7070/api/posts?page=1&pageSize=2" | head -c 200; echo
           echo "=== 管理端无 token 应 401 ==="
           CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:7070/api/admin/comments?page=1&pageSize=2")
-          if [ "$CODE" != "401" ]; then echo "期望 401，实际 $CODE"; docker compose logs; exit 1; fi
+          if [ "$CODE" != "401" ]; then echo "期望 401，实际 $CODE"; docker compose -f docker-compose.yml -f docker-compose.ci.yml logs; exit 1; fi
           echo "admin 401 OK"
 
       - name: 拆除
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v

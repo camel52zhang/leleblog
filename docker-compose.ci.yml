@@ -1,0 +1,20 @@
+# CI 冒烟测试专用覆盖文件
+# 用途：docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+# 让 CI 从「本次提交的本地源码」直接构建镜像做端到端验证，
+# 不再依赖 Docker Hub 上的 :latest，从而消除与 docker-build-push 作业的
+# 竞态（并行拉到陈旧/未推送完成的镜像）以及 registry 可用性带来的不稳定。
+# 基础 docker-compose.yml 仍提供 environment / healthcheck / depends_on /
+# networks / volumes，本文件只补充 build 上下文并改写 image 标签。
+
+services:
+  leleblog-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: leleblog-api:ci
+
+  leleblog-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: leleblog-web:ci
