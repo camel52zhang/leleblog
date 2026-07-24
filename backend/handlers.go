@@ -351,7 +351,7 @@ func adminUploadHandler(c *gin.Context) {
 		return
 	}
 	os.Chmod(dst, 0644)
-	// 返回相对路径，由前端同源加载（Next 已代理 /uploads），避免 Host 头伪造
+	// 返回相对路径，由前端同源加载（Next 已代理 /uploads 到后端），避免 Host 头伪造
 	c.JSON(200, gin.H{"url": "/uploads/" + fileName})
 }
 

@@ -5,14 +5,19 @@ import type { NextConfig } from "next";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://leleblog-api:7070';
 
 const nextConfig: NextConfig = {
-  // ⭐ 核心：API 转发
+  // ⭐ 核心：/api 转发 + /uploads 静态文件转发
   async rewrites() {
     return [
       {
-        // 匹配所有以 /api 开头的请求
+        // API 请求转发到后端
         source: '/api/:path*',
-        // 转发到后端服务地址（可通过环境变量配置）
         destination: `${API_URL}/api/:path*`,
+      },
+      {
+        // 用户上传的文件（图片、favicon 等）从后端 uploads 目录读取，
+        // 避免在编辑器/前台出现跨域/404 问题，统一同源 :4000 提供
+        source: '/uploads/:path*',
+        destination: `${API_URL}/uploads/:path*`,
       },
     ];
   },
