@@ -4,10 +4,8 @@
 services:
   # 后端服务
   leleblog-api:
+    # 直接从 Docker Hub 拉取 CI 推送的预构建镜像
     image: camel52zhang/leleblog-api:latest
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
     container_name: leleblog-api
     ports:
       - "7070:7070"
@@ -44,10 +42,8 @@ services:
 
   # 前端服务
   leleblog-web:
+    # 直接从 Docker Hub 拉取 CI 推送的预构建镜像
     image: camel52zhang/leleblog-web:latest
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
     container_name: leleblog-web
     ports:
       - "4000:4000"
